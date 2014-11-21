@@ -1,0 +1,25 @@
+CREATE VIEW visao_despachos_mensais AS SELECT id_destinatario AS id_conta,
+date_trunc('month',pd.dt_resolucao)::date /*lpad(extract (month from
+pd.dt_resolucao)::varchar,2,'0')||'/'||extract (year from
+pd.dt_resolucao)::varchar*/ AS mes_ano, COUNT
+    (
+        CASE
+            WHEN pd.dt_resolucao::DATE <= COALESCE (pd.dt_prazo::DATE,
+dt_entrada:: DATE + 8)
+            THEN 'S'
+        END) AS no_prazo, COUNT (
+        CASE
+            WHEN pd.dt_resolucao::DATE > COALESCE (pd.dt_prazo::DATE,
+dt_entrada:: DATE + 8)
+            THEN 'N'
+        END) AS fora_do_prazo
+FROM providencia_despacho pd
+WHERE pd.in_despacho_anulado <> TRUE
+    AND pd.dt_resolucao IS NOT NULL
+    /*AND (pd.dt_entrada::DATE BETWEEN (now() - INTERVAL'1000 month')
+::DATE AND now() ::DATE)*/
+GROUP BY id_destinatario, date_trunc('month',pd.dt_resolucao)
+/*lpad(extract (month from
+pd.dt_resolucao)::varchar,2,'0')||'/'||extract (year from
+pd.dt_resolucao)::varchar*/
+ORDER BY id_destinatario,2
