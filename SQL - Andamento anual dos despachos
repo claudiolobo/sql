@@ -1,0 +1,23 @@
+/*
+Substituir 'SELECT 8 AS "Seção"' pelo id_secao a ser computada, tanto na primeira linha do select quanto na função "mostra_secao_e_todos_seus_dependentes"
+*/
+SELECT 8 AS "Seção", mes_ano , Sum(no_prazo) AS "No prazo", sum(fora_do_prazo) AS "Fora do Prazo"
+FROM visao_despachos_mensais vdm
+INNER JOIN ( 
+SELECT u.id_usuario AS id_conta_ativa
+FROM usuario u
+INNER JOIN usuario_secao us
+  ON (u.id_usuario = us.id_usuario)
+INNER JOIN secao s
+  ON (us.id_secao = s.id_secao)
+WHERE s.in_excluido <> 's'
+    AND u.in_excluido <> 's'
+    AND us.id_secao IN
+    (SELECT t.id_sec
+        FROM mostra_secao_e_todos_seus_dependentes (8) t (id_sec INT)) 
+        ) sec_ativ
+        
+        ON (sec_ativ.id_conta_ativa = vdm.id_conta)
+        WHERE mes_ano BETWEEN '2014-01-01' AND '2014-12-31' 
+GROUP BY "Seção", mes_ano
+ORDER BY 2 
