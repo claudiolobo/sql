@@ -27,7 +27,7 @@ BEGIN
     SELECT t.id_secao FROM mostra_pais_no_nivel (id_nivel_secao) AS t (id_secao INT) 
     LOOP 
     RETURN query
-        SELECT (SELECT nm_sigla FROM secao WHERE v_pais_nivel.id_secao = id_secao) AS "Secao", SUM (no_prazo), SUM (fora_do_prazo), 
+        SELECT (SELECT nm_sigla FROM secao WHERE v_pais_nivel.id_secao = id_secao) AS "Secao", SUM (no_prazo), SUM (fora_do_prazo)
                 FROM (SELECT id_secao , secao, SUM (no_prazo) AS no_prazo, SUM (fora_do_prazo) AS fora_do_prazo
                        FROM
                             /*Despachos por conta*/
