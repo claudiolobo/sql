@@ -13,7 +13,7 @@ BEGIN
 		  (SELECT 	id_secao, string_to_array (arvoreinversa (id_secao),'-') AS v FROM secao) s2   WHERE 	s2.v @> ARRAY[(SELECT id_secao::TEXT FROM secao WHERE id_secao = id_nivel_secao)])	
 	LOOP			
 		RETURN NEXT v_pais_nivel;
-	END LOOP;300
+	END LOOP;
     RETURN ;
 END;
 $corpo$ LANGUAGE plpgsql
