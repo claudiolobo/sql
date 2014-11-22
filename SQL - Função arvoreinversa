@@ -1,0 +1,30 @@
+/*
+Criar a funcao a seguir, que retorna a arvore inversa (neto->filho->pai) das secoes
+*/
+
+CREATE OR REPLACE FUNCTION arvoreinversa (secao_id integer)  
+RETURNS varchar
+VOLATILE
+AS $corpo$
+DECLARE
+    retorno varchar;
+    aux     int;
+	separador char;
+BEGIN
+    separador := '-';
+    retorno := secao_id::varchar;
+    /*Encontrando os pais para cada uma das secoes...*/
+    SELECT id_pai INTO aux FROM secao WHERE id_secao = secao_id;
+    IF FOUND THEN
+    /*Inserindo cada pai e seus respectivos descendentes em um vetor ...*/
+    LOOP
+        retorno:= retorno||separador||aux;
+        SELECT id_pai INTO aux FROM secao WHERE id_secao = aux;
+        IF NOT FOUND THEN
+                EXIT;
+        END IF;
+    END LOOP;
+    END IF;
+    RETURN retorno;
+END;
+$corpo$ LANGUAGE plpgsql
