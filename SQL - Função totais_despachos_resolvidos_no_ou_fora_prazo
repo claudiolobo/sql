@@ -1,74 +1,96 @@
-CREATE OR REPLACE FUNCTION totais_despachos_resolvidos_no_ou_fora_prazo (IN id_nivel_secao INTEGER, IN dt_ini DATE, IN dt_fim DATE, OUT
-                                    "Seção" VARCHAR, OUT "Resolvidos no Prazo" NUMERIC, OUT "Resolvidos fora do Prazo"
-                                    NUMERIC, OUT "Total resolvido" NUMERIC, "% Resolvido no prazo" NUMERIC, "% Resolvido fora do prazo" NUMERIC) RETURNS SETOF record LANGUAGE plpgsql AS $function$
-DECLARE
-    retorno record;
-    aux INT;
-    registros    record;
-    v_pais_nivel    record;
-    dt_aux  date;
-    dt_inicial  date;
-    dt_final    date;
+CREATE OR REPLACE FUNCTION totais_despachos_resolvidos_no_ou_fora_prazo (
+    id_nivel_secao INTEGER,
+    dt_ini date,
+    dt_fim date,
+    OUT "Seção" CHARACTER VARYING,
+    OUT "Resolvidos no Prazo" NUMERIC,
+    OUT "Resolvidos fora do Prazo" NUMERIC )
+RETURNS SETOF record 
+LANGUAGE plpgsql
+AS $corpo$ 
+DECLARE 
+	retorno record;
+	aux INT;
+	registros record;
+	v_pais_nivel record;
+	dt_aux date;
+	dt_inicial date;
+	dt_final date;
 BEGIN
-    dt_inicial := dt_ini;
-    dt_final := dt_fim;
-    IF dt_inicial IS NULL THEN
-        dt_inicial := now()::date - INTERVAL '1 month';
-    END IF;
-    IF dt_final IS NULL THEN
-        dt_final := now()::date;
-    END IF;
-    IF dt_inicial > dt_final THEN
-        dt_aux := dt_inicial;
-        dt_inicial := dt_final;
-        dt_final := dt_aux;
-    END IF;
-    FOR v_pais_nivel IN
-    SELECT t.id_secao FROM mostra_pais_no_nivel (id_nivel_secao) AS t (id_secao INT) 
-    LOOP 
-    RETURN query
-        SELECT (SELECT nm_sigla FROM secao WHERE v_pais_nivel.id_secao = id_secao) AS "Secao", SUM (no_prazo), SUM (fora_do_prazo)
-                FROM (SELECT id_secao , secao, SUM (no_prazo) AS no_prazo, SUM (fora_do_prazo) AS fora_do_prazo
-                       FROM
-                            /*Despachos por conta*/
-                            (SELECT id_destinatario AS id_conta, 
-                                COUNT (
-                                    CASE
-                                        WHEN pd.dt_resolucao::DATE <= COALESCE (pd.dt_prazo::DATE, dt_entrada::
-                                            DATE + 8)
-                                        THEN 'S'
-                                    END) AS no_prazo, 
-                                COUNT (
-                                    CASE
-                                        WHEN pd.dt_resolucao::DATE > COALESCE (pd.dt_prazo::DATE, dt_entrada::
-                                            DATE + 8)
-                                        THEN 'N'
-                                    END) AS fora_do_prazo
-                                FROM providencia_despacho pd
-                                WHERE pd.in_despacho_anulado <> TRUE
-                                    AND pd.dt_resolucao IS NOT NULL
-                                    AND (pd.dt_entrada::DATE BETWEEN dt_inicial AND dt_final)
-                                GROUP BY id_destinatario                                
-                            ) AS dpc
-                        INNER JOIN
-                            /*Usuarios e suas respectivas secoes ATIVAS*/
-                            (   SELECT s.nm_sigla AS secao, us.id_secao, u.id_usuario AS id_conta_ativa
-                                FROM usuario u
-                                INNER JOIN usuario_secao us
-                                ON (u.id_usuario = us.id_usuario)
-                                INNER JOIN secao s
-                                ON (us.id_secao = s.id_secao)
-                                WHERE s.in_excluido <> 's'
-                                    AND u.in_excluido <> 's') AS uca
-                         ON (dpc.id_conta = uca.id_conta_ativa)
-                        GROUP BY id_secao, secao
-                    ) AS totais
-                    INNER JOIN
-                        (SELECT t.id_secao
-                            FROM mostra_secao_e_todos_seus_dependentes (v_pais_nivel.id_secao) t (id_secao INT)) AS dep
-                    ON totais.id_secao = dep.id_secao
-                    GROUP BY "Secao";
-    END LOOP;
-    RETURN ;
+	dt_inicial := dt_ini;
+	dt_final := dt_fim;
+	IF dt_inicial IS NULL THEN 
+		dt_inicial := now ( ) ::date - interval '1 month';
+	END IF;
+	IF dt_final IS NULL THEN 
+		dt_final := now ( ) ::date;
+	END IF;
+	IF dt_inicial > dt_final THEN 
+		dt_aux := dt_inicial;
+		dt_inicial := dt_final;
+		dt_final := dt_aux;
+	END IF;
+	FOR v_pais_nivel IN	SELECT t.id_secao FROM mostra_pais_no_nivel (id_nivel_secao ) AS t (id_secao INT )
+	LOOP 
+		RETURN query
+			SELECT 
+				(
+				SELECT nm_sigla
+				FROM secao
+				WHERE v_pais_nivel.id_secao = id_secao ) AS "Secao",
+				sum ( no_prazo ),
+				sum ( fora_do_prazo )
+			FROM ( 
+					SELECT id_secao, secao, sum ( no_prazo ) AS no_prazo, sum ( fora_do_prazo ) AS fora_do_prazo
+					FROM
+						/*Despachos por conta*/
+						(
+							SELECT id_destinatario AS id_conta,
+								count (
+									CASE
+										WHEN pd.dt_resolucao ::DATE <= COALESCE (
+											pd.dt_prazo ::DATE,
+											dt_entrada:: date + 8 )
+										THEN 'S'
+									END ) AS no_prazo,
+								count (
+									CASE
+										WHEN pd.dt_resolucao ::DATE > COALESCE (
+											pd.dt_prazo ::DATE,
+											dt_entrada:: date + 8 )
+										THEN 'N'
+									END ) AS fora_do_prazo
+							FROM providencia_despacho pd
+							WHERE pd.in_despacho_anulado <> TRUE AND pd.dt_resolucao IS NOT NULL AND ( pd.dt_entrada ::DATE BETWEEN dt_inicial AND dt_final )
+							GROUP BY id_destinatario ) AS dpc 
+							
+						INNER JOIN /*Join de 'dpc' com 'uca' */
+							
+						/*Usuarios e suas respectivas secoes ATIVAS*/
+						(
+							SELECT s.nm_sigla AS secao, us.id_secao, u.id_usuario AS id_conta_ativa
+							FROM usuario u 
+							INNER JOIN usuario_secao us 
+							ON ( u.id_usuario = us.id_usuario )
+							INNER JOIN secao s 
+							ON ( us.id_secao = s.id_secao )
+							WHERE s.in_excluido <> 's' AND u.in_excluido <> 's' ) AS uca 
+							
+						ON ( dpc.id_conta = uca.id_conta_ativa )
+						GROUP BY id_secao, secao 
+				) AS totais 
+			INNER JOIN 
+					(	/* Para mostrar apenas os usuários das seções envolvidas... */
+						SELECT t.id_secao
+						FROM mostra_secao_e_todos_seus_dependentes ( v_pais_nivel.id_secao ) t ( id_secao INT ) ) AS dep 
+			ON totais.id_secao = dep.id_secao
+			GROUP BY "Secao";
+	END LOOP;
+	RETURN;
 END;
-$function$;
+$corpo$;
+COMMENT ON FUNCTION "public"."totais_despachos_resolvidos_no_ou_fora_prazo" (
+    int4,
+    date,
+    date )
+IS NULL;
