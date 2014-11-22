@@ -1,0 +1,19 @@
+CREATE OR REPLACE FUNCTION mostra_secao_e_todos_seus_dependentes (id_nivel_secao INTEGER) RETURNS
+    SETOF record VOLATILE
+AS
+    $corpo$
+DECLARE
+    retorno VARCHAR;
+    aux    int;
+    registros	record;
+    v_pais_nivel	record;
+BEGIN
+	FOR v_pais_nivel IN SELECT 	s1.id_secao FROM secao 	s1 WHERE 	s1.id_secao IN 
+	   ( select s2.id_secao FROM 
+		  (SELECT 	id_secao, string_to_array (arvoreinversa (id_secao),'-') AS v FROM secao) s2   WHERE 	s2.v @> ARRAY[(SELECT id_secao::TEXT FROM secao WHERE id_secao = id_nivel_secao)])	
+	LOOP			
+		RETURN NEXT v_pais_nivel;
+	END LOOP;300
+    RETURN ;
+END;
+$corpo$ LANGUAGE plpgsql
