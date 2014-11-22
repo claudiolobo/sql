@@ -1,0 +1,23 @@
+CREATE OR REPLACE FUNCTION mostra_pais_no_nivel (id_nivel_secao INTEGER) RETURNS SETOF record
+    VOLATILE
+AS
+    $corpo$
+    DECLARE
+        retorno VARCHAR;
+    aux    int;
+    registros record;
+    v_pais_nivel record;
+BEGIN
+    FOR v_pais_nivel IN 
+        SELECT pais.id_secao AS id_secao_pai_no_nivel FROM ( SELECT id_secao, string_to_array (arvoreinversa (id_secao),'-') AS v
+        FROM secao) AS pais
+        WHERE (array_dims (v)) =
+            (   SELECT array_dims (string_to_array (arvoreinversa (id_secao),'-')) AS v2
+                FROM secao
+                WHERE id_secao = id_nivel_secao)
+    LOOP
+        RETURN NEXT v_pais_nivel;
+    END LOOP;
+    RETURN ;
+END;
+$corpo$ LANGUAGE plpgsql
